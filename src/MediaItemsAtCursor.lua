@@ -24,31 +24,28 @@ function getMediaItemsAtCursorPosition()
     return items
 end
 
-function displayMediaItems(items)
-    local message = ""
+function getMediaListInfo(items)
+    local message = "{\"medias\":["
+    local firstItem = true
     for i, item in ipairs(items) do
+
+        if not firstItem then
+            message = message .. ","
+        else
+            firstItem = false
+        end
+
         local take = reaper.GetActiveTake(item)
+        local _, GUID = reaper.GetSetMediaItemTakeInfo_String(take, "GUID", "", 0);
         local _, itemName = reaper.GetSetMediaItemTakeInfo_String(take, "P_NAME", "", false)
         local itemVolume = reaper.GetMediaItemTakeInfo_Value(take, "D_VOL")
-        message = message .. "Name: " .. itemName .. ", Volume: " .. itemVolume .. "\n"
-    end
-    reaper.ClearConsole()
-    reaper.ShowConsoleMsg(message)
-end
 
-function writeResults(items)
-    local message = ""
-    for i, item in ipairs(items) do
-        local take = reaper.GetActiveTake(item)
-        local _, itemName = reaper.GetSetMediaItemTakeInfo_String(take, "P_NAME", "", false)
-        local itemVolume = reaper.GetMediaItemTakeInfo_Value(take, "D_VOL")
-        message = message .. "Name: " .. itemName .. ", Volume: " .. itemVolume .. "\n"
+        message = message .. "{\"id\":\"".. GUID .."\",\"name\": \"" .. itemName .. "\",\"volume\": " .. itemVolume .. "}"
     end
-    local mediaListFile = io.open("C:\\Users\\vince\\AppData\\Roaming\\REAPER\\reaper_www_root\\LuaResults\\mediaListFile.html",'w+')
-    mediaListFile:write(message)
-    mediaListFile:close()
+    message = message .. "]}"
+    reaper.SetExtState("results","MediaList", message,false);
+    reaper.ShowConsoleMsg(".")
 end
-
 
 local interval = 1000 -- Interval in milliseconds (adjust as needed)
 local timerID = reaper.time_precise() + interval / 1000
@@ -56,11 +53,10 @@ local timerID = reaper.time_precise() + interval / 1000
 local function loop()
     if reaper.time_precise() >= timerID then
         local mediaList = getMediaItemsAtCursorPosition()
-        displayMediaItems(mediaList)
-        writeResults(mediaList)
+        getMediaListInfo(mediaList)
         timerID = reaper.time_precise() + interval / 1000
     end
     reaper.defer(loop)
 end
-
+reaper.ShowConsoleMsg("Running")
 loop()
